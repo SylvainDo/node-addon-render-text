@@ -6,6 +6,20 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 
+std::uint32_t pot(std::uint32_t v) {
+    if (v != 0 ) {
+        --v;
+        v |= (v >> 1);
+        v |= (v >> 2);
+        v |= (v >> 4);
+        v |= (v >> 8);
+        v |= (v >> 16);
+        ++v;
+    }
+
+    return v;
+}
+
 namespace sdlw {
     struct Error : std::runtime_error {
         Error() :
@@ -60,6 +74,13 @@ namespace sdlw {
                 throw Error{};
         }
 
+        Surface(int width, int height, int depth, SDL_PixelFormatEnum format) {
+            ptr.reset(SDL_CreateRGBSurfaceWithFormat(0, width, height, depth, format));
+
+            if (!ptr)
+                throw Error{};
+        }
+
         SDL_Surface* get() const {
             return ptr.get();
         }
@@ -80,21 +101,42 @@ namespace sdlw {
             if (IMG_SavePNG(get(), path.string().c_str()) != 0)
                 throw Error{};
         }
+
+        int width() const {
+            return get()->w;
+        }
+
+        int height() const {
+            return get()->h;
+        }
+
+        int pitch() const {
+            return get()->pitch;
+        }
+
+        void* pixels() const {
+            return get()->pixels;
+        }
     };
 }
 
 sdlw::Surface render_text_surface(sdlw::Font& font, sdlw::Font& outline_font, int outline_thickness,
-    const std::string& text, const SDL_Color& color, const SDL_Color& outline_color) {
-
+    const std::string& text, const SDL_Color& color, const SDL_Color& outline_color)
+{
     sdlw::Surface bg_surface{outline_font, text, outline_color};
     sdlw::Surface fg_surface{font, text, color};
 
     fg_surface.set_blendmode(SDL_BLENDMODE_BLEND);
-    SDL_Rect dst_rect{outline_thickness, outline_thickness, fg_surface.get()->w, fg_surface.get()->h};
+    SDL_Rect dst_rect{outline_thickness, outline_thickness, fg_surface.width(), fg_surface.height()};
     sdlw::Surface::blit(fg_surface, bg_surface, dst_rect);
-    bg_surface.set_format(SDL_PIXELFORMAT_RGBA8888);
 
-    return bg_surface;
+    sdlw::Surface final_surface{static_cast<int>(pot(bg_surface.width())), static_cast<int>(pot(bg_surface.height())), 32, SDL_PIXELFORMAT_RGBA8888};
+    SDL_Rect final_dst_rect{final_surface.width() / 2 - bg_surface.width() / 2,
+        final_surface.height() / 2 - bg_surface.height() / 2,
+        bg_surface.width(), bg_surface.height()};
+    sdlw::Surface::blit(bg_surface, final_surface, final_dst_rect);
+
+    return final_surface;
 }
 
 SDL_Color to_color(const Napi::Value& value) {
@@ -125,9 +167,9 @@ Napi::Value render_text(const Napi::CallbackInfo& info) {
         auto s = render_text_surface(font, outline_font, outline_thickness, text, fill_color, outline_color);
         auto s_obj = Napi::Object::New(info.Env());
 
-        s_obj.Set("w", s.get()->w);
-        s_obj.Set("h", s.get()->h);
-        s_obj.Set("data", Napi::Buffer<std::uint8_t>::Copy(info.Env(), static_cast<uint8_t*>(s.get()->pixels), s.get()->pitch * s.get()->h));
+        s_obj.Set("w", s.width());
+        s_obj.Set("h", s.height());
+        s_obj.Set("data", Napi::Buffer<std::uint8_t>::Copy(info.Env(), static_cast<std::uint8_t*>(s.pixels()), s.pitch() * s.height()));
 
         return s_obj;
     }
@@ -159,9 +201,9 @@ Napi::Value render_texts(const Napi::CallbackInfo& info) {
             auto s = render_text_surface(font, outline_font, outline_thickness, texts.Get(i).As<Napi::String>().Utf8Value(), fill_color, outline_color);
             auto s_obj = Napi::Object::New(info.Env());
 
-            s_obj.Set("w", s.get()->w);
-            s_obj.Set("h", s.get()->h);
-            s_obj.Set("data", Napi::Buffer<std::uint8_t>::Copy(info.Env(), static_cast<uint8_t*>(s.get()->pixels), s.get()->pitch * s.get()->h));
+            s_obj.Set("w", s.width());
+            s_obj.Set("h", s.height());
+            s_obj.Set("data", Napi::Buffer<std::uint8_t>::Copy(info.Env(), static_cast<std::uint8_t*>(s.pixels()), s.pitch() * s.height()));
 
             ret.Set(i, s_obj);
         }

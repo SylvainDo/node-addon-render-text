@@ -1,23 +1,21 @@
 {
   "name": "render-text",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
   "main": "js/lib.js",
   "private": true,
   "gypfile": true,
   "scripts": {
     "conf": "node-gyp configure",
-    "build": "node-gyp build -j 8",
-    "rebuild": "node-gyp rebuild -j 8",
+    "build": "node-gyp build -j 8 && node scripts/copy_addon.js",
+    "rebuild": "node-gyp rebuild -j 8 && node scripts/copy_addon.js",
     "test": "node js/test.js",
-    "postinstall": "tsc"
+    "postinstall": "tsc && node scripts/copy_addon.js"
   },
   "author": "",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "@types/module-alias": "^2.0.0",
     "@types/node": "^14.0.5",
-    "module-alias": "^2.2.2",
     "node-addon-api": "^3.0.0",
     "typescript": "^3.9.3"
   },
