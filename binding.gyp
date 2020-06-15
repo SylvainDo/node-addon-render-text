@@ -1,57 +1,38 @@
 {
-    'variables': {
-        'win_ia32_include_dir': '<(module_root_dir)/deps/windows-ia32/include',
-        'win_ia32_lib_dir': '<(module_root_dir)/deps/windows-ia32/lib',
-    },
     'targets': [{
         'target_name': 'render_text',
-        'defines': ['NAPI_CPP_EXCEPTIONS', 'GUI'],
-        'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],        
-        'msvs_settings': {
-            'VCCLCompilerTool': {
-                'RuntimeLibrary': 1,
-				'ExceptionHandling': 1,
-                'AdditionalOptions': ['/std:c++17']
-            }
-        },
-        'conditions': [ 
+        'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],
+        'conditions': [
             ['OS=="win"', {
-                'defines': [
-  					'_HAS_EXCEPTIONS=1'
-				],
-                'libraries': [
-                    'SDL2.lib',
-                    'SDL2_ttf.lib',
-                    'SDL2_image.lib',
-                    'freetype.lib',
-                    'bz2.lib',
-                    'libpng16.lib',
-
-                    'Imm32.lib',
-                    'Setupapi.lib',
-                    'Version.lib',
-                    'Winmm.lib'
-                ],
-            }],  
-            ['OS=="win" and target_arch=="ia32"', {
-                'include_dirs': [
-                    '<(win_ia32_include_dir)'
-                ],
                 'msvs_settings': {
+                    'VCCLCompilerTool': {
+                        'RuntimeLibrary': 1,
+                        'ExceptionHandling': 1,
+                        'AdditionalOptions': ['/std:c++17']
+                    },
                     'VCLinkerTool': {
                         'AdditionalLibraryDirectories': [
-                            '<(win_ia32_lib_dir)'
+                            '<(module_root_dir)/deps/windows-<(target_arch)/lib'
                         ]
                     }
-                }
-            },
-            ['OS=="linux"'], {
+                },
+                'defines': ['_HAS_EXCEPTIONS=1'],
+                'include_dirs': [
+                    '<(module_root_dir)/deps/windows-<(target_arch)/include'
+                ],
+                'libraries': [
+                    'SDL2.lib', 'SDL2_ttf.lib', 'SDL2_image.lib', 'freetype.lib', 'bz2.lib', 'libpng16.lib',
+                    'Imm32.lib', 'Setupapi.lib', 'Version.lib', 'Winmm.lib'
+                ]
+            }],
+            ['OS=="linux"', {
                 'cflags_cc': ['-std=c++17', '-fexceptions'],
-                'libraries': ['-lSDL2 -lSDL2_ttf -lSDL2_image']
+                'libraries': ['-lSDL2', '-lSDL2_ttf', '-lSDL2_image']
             }]
         ],
+        'defines': ['NAPI_CPP_EXCEPTIONS', 'GUI'],
         'include_dirs': [
-            "<!@(node -p \"require('node-addon-api').include\")",  
+            "<!@(node -p \"require('node-addon-api').include\")",
         ],
         'sources': [
             'src/addon/main.cpp'
